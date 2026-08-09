@@ -1,8 +1,9 @@
 # RODIC × NASSCOM Site Deployment Guide
 
-This is a full-stack React application with a Node.js (Express) backend connecting to MongoDB. The project has been perfectly restructured so it can be deployed on platforms like **Vercel** with zero configuration.
+This is the deployment guide for the Rodic Innovations AI Checker — an AI-powered platform that evaluates startup idea submissions using the OpenAI API. It's a full-stack React application with a Node.js (Express) backend connecting to MongoDB. The project has been restructured so it can be deployed on platforms like **Vercel** with zero configuration.
 
 ## Pre-requisites
+
 1. You must have a MongoDB database running (e.g. MongoDB Atlas).
 2. You need these environment variables:
    - `MONGO_URL`: Your MongoDB connection string.
@@ -13,15 +14,19 @@ This is a full-stack React application with a Node.js (Express) backend connecti
    - `AI_MODEL` (optional): defaults to `gpt-4.1-mini`.
 
 ## A note on `bucket-policy.json`
-This repo includes an S3 bucket policy (`bucket-policy.json`) granting public `s3:GetObject` on `rodic-nasscom-site-piyush`. It isn't referenced by the Vercel deployment path documented here and its current purpose/usage is unconfirmed — it may be a leftover from a prior/alternate static-hosting setup. If you do apply it to a real bucket, only do so on a bucket that holds *exclusively* public static site assets (built JS/CSS/HTML/media) — never one that also stores backups, credentials, or other non-public files, since the policy makes every object in the bucket world-readable.
+
+This repo includes an S3 bucket policy (`bucket-policy.json`) granting public `s3:GetObject` on `rodic-nasscom-site-piyush`. **It is not used by the Vercel deployment path documented here.** It was created for a prior/alternate static-hosting experiment and is not required for this app to run.
+
+If you don't need S3 static hosting, delete this file — leaving an unused public-bucket policy in the repo root is more confusing than helpful. If you do keep it for reference, only apply it to a bucket that holds *exclusively* public static site assets (built JS/CSS/HTML/media) — never one that also stores backups, credentials, or other non-public files, since the policy makes every object in the bucket world-readable.
 
 ---
 
-## Method 1: Deploying to Vercel (Recommended)
+## Method 1: Deploying to Vercel (Recommended, ~2 minutes)
 
 Vercel will automatically detect the React frontend at the root, and seamlessly deploy the backend inside the `api/` folder as Serverless Functions.
 
 **Option A: Using GitHub (Easiest)**
+
 1. Create a new repository on GitHub and push this entire folder to it.
 2. Go to your [Vercel Dashboard](https://vercel.com/new).
 3. Click **"Add New Project"** and import your newly created GitHub repository.
@@ -29,6 +34,7 @@ Vercel will automatically detect the React frontend at the root, and seamlessly 
 5. Click **Deploy**. Vercel will build the frontend and set up the backend APIs automatically!
 
 **Option B: Using Vercel CLI (Fastest)**
+
 1. Open a terminal in this folder.
 2. Run `npm install -g vercel` (if you don't have it).
 3. Run `npx vercel`. Follow the prompts.
@@ -55,4 +61,5 @@ Because this project uses Vercel Serverless Functions in the `api/` directory (w
 ---
 
 ## Important Note About "Drag-and-Drop"
+
 Because this project contains a Node.js backend (in the `api/` folder) to handle database registrations, **you cannot use the drag-and-drop deployment method** on Vercel or Netlify. Drag-and-drop only works for simple static HTML sites. You must use the CLI or GitHub integrations so Vercel knows to spin up the serverless backend.
