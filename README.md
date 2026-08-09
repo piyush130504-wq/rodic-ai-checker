@@ -1,48 +1,166 @@
-# RODIC × NASSCOM 
+# RODIC × NASSCOM AI Checker
 
-Welcome to the RODIC × NASSCOM collaboration web portal. This application serves as the digital front door for infrastructure innovation, offering a premium user experience with dynamic animations, robust form handling, and a serverless backend.
+An AI-powered startup idea evaluation platform built for the RODIC × NASSCOM
+infrastructure innovation initiative. Founders submit a startup idea and
+receive a structured, AI-generated readiness review in seconds, while
+administrators get a protected way to review registrations and enquiries.
 
-## 🏗 Architecture Overview
+## 🚀 What I Built
 
-The project is built using a modern, scalable stack designed for edge-network deployment:
-- **Frontend**: React.js with Framer Motion for premium animations.
-- **Styling**: Tailwind CSS, configured for custom Rodic brand guidelines.
-- **Backend**: Express.js (optimized as Vercel Serverless Functions).
-- **Database**: MongoDB (Mongoose ODM).
+I designed and developed the full-stack application, including:
 
-## 🚀 Getting Started
+- The AI idea-checker workflow: form submission → prompt construction →
+  structured evaluation → persisted result → rendered feedback
+- The evaluation prompt and JSON output contract for the LLM
+- REST APIs for idea checks, registrations, and status checks
+- Rate limiting and input validation to protect the AI endpoint from abuse
+- Admin-key-gated access to registration data (PII)
+- MongoDB-backed persistence with Mongoose schemas
+- A serverless Express backend deployed as Vercel Functions
+- A responsive, animated React frontend (Framer Motion, Tailwind)
 
-The easiest way to run the full stack (React + Backend) locally is by utilizing the Vercel CLI, which perfectly emulates the production environment on your machine.
+## 🧠 AI Evaluation
+
+Submitting the idea-checker form sends the founder's input to the backend,
+which calls the **Google Gemini API** (`@google/genai`) to screen the idea
+and returns a strict JSON object:
+
+```json
+{
+  "overall_score": 85,
+  "verdict": "Promising",
+  "summary": "...",
+  "strengths": ["..."],
+  "risks": ["..."],
+  "next_steps": ["..."]
+}
+```
+
+`verdict` is constrained to one of `Promising`, `Needs refinement`, or
+`Early concept`. The result is rendered directly in the UI as a readiness
+score out of 100, a verdict badge, a summary, and three lists (strengths,
+open questions, next steps), and is also saved to MongoDB alongside the
+original submission.
+
+**Prompt design:** the system prompt frames the model as an impartial
+early-stage evaluator scoped to Indian infrastructure/construction-tech,
+explicitly states the output is a preliminary screening (not investment,
+legal, or regulatory advice), and wraps the user's submission in
+`<submission>` tags with an explicit instruction to treat that content as
+data to evaluate — not as instructions to follow. This mitigates prompt
+injection from submitted idea text.
+
+The model is configurable via environment variables without touching code:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+AI_MODEL=gemini-3.6-flash
+```
+
+**Abuse protection:** the idea-check endpoint is rate-limited to 5
+submissions per client per 15 minutes (separate from the general form
+limiter at 20/15 min), since each submission triggers a paid LLM call.
+Input is also validated server-side (email format, idea length between 80
+and 6,000 characters) before it reaches the model.
+
+## 🏗 Architecture
+
+```text
+                    ┌─────────────────────┐
+                    │     React Client    │
+                    │ Tailwind + Framer   │
+                    │      Motion         │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │  Vercel Serverless  │
+                    │   API / Express     │
+                    │ (rate limiting,     │
+                    │  validation, auth)  │
+                    └──────────┬──────────┘
+                               │
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+       ┌─────────────────┐          ┌─────────────────┐
+       │    MongoDB      │          │  Google Gemini  │
+       │ Registrations / │          │   AI Evaluation │
+       │  Idea Checks    │          │                 │
+       └─────────────────┘          └─────────────────┘
+```
+
+## 🛠 Tech Stack
+
+**Frontend:** React 19, Tailwind CSS, Framer Motion, React Router
+**Backend:** Node.js, Express, Vercel Serverless Functions
+**Database:** MongoDB, Mongoose
+**AI:** Google Gemini (`@google/genai`)
+**Security/Infra:** Helmet, express-rate-limit, CORS allowlisting
+
+## 🔐 Security
+
+- API credentials (`GEMINI_API_KEY`) stay server-side and are never exposed
+  to the frontend.
+- `GET /api/registrations` — which returns contact PII (name, email,
+  phone, organization, message) — is protected by an `ADMIN_API_KEY`
+  checked against an `x-admin-key` header. If the key isn't configured
+  server-side, the endpoint is disabled rather than left open.
+- `CORS_ORIGINS` should be restricted to production domain(s); `*` is for
+  local development only.
+- Helmet sets standard security headers; both public write endpoints
+  (registrations, idea checks) are rate-limited per client.
+
+## ⚙️ Running Locally
 
 ### Prerequisites
-1. Node.js (v18+)
-2. Vercel CLI (`npm i -g vercel`)
-3. A MongoDB database (e.g., MongoDB Atlas)
 
-### Local Development
-1. Clone or extract this repository.
-2. Install the dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the root directory:
-   ```env
-   MONGO_URL=your_mongodb_connection_string
-   DB_NAME=nasscom
-   # Use your real domain(s) in production instead of '*'
-   CORS_ORIGINS=*
-   # Long random secret required to call GET /api/registrations (send as the x-admin-key header)
-   ADMIN_API_KEY=change_me_to_a_long_random_value
-   # Keep this server-side only; never place it in a REACT_APP_ variable.
-   OPENAI_API_KEY=your_openai_api_key
-   # Optional: defaults to gpt-4.1-mini
-   AI_MODEL=gpt-4.1-mini
-   ```
-4. Start the local Vercel development server:
-   ```bash
-   npx vercel dev
-   ```
-   This will simultaneously spin up your React frontend and your serverless backend APIs!
+- Node.js 18+
+- Vercel CLI
+- A MongoDB database (e.g. MongoDB Atlas)
 
----
-*For full deployment instructions to production, please see [DEPLOYMENT.md](./DEPLOYMENT.md).*
+### Installation
+
+```bash
+npm install
+```
+
+Create a `.env` file in the project root:
+
+```env
+MONGO_URL=your_mongodb_connection_string
+DB_NAME=nasscom
+CORS_ORIGINS=*
+ADMIN_API_KEY=your_secure_admin_key
+GEMINI_API_KEY=your_gemini_api_key
+AI_MODEL=gemini-3.6-flash
+```
+
+Start the application (this runs the React frontend and the serverless
+Express backend together, emulating production):
+
+```bash
+npx vercel dev
+```
+
+> Running `npm start` alone only starts the React frontend — API calls
+> (including the idea checker) will fail without the backend running via
+> the Vercel CLI.
+
+## 📌 Engineering Highlights
+
+- Designed an LLM-backed feature with a strict, schema-shaped JSON output
+  contract rather than free-form text, so the frontend can render results
+  deterministically.
+- Treated user-submitted idea text as untrusted input to the model and
+  scoped the prompt to reduce prompt-injection risk.
+- Rate-limited and validated the AI endpoint separately from other public
+  endpoints, since it's the one that costs money per request.
+- Kept AI credentials and admin secrets server-side only, with the admin
+  endpoint failing closed if misconfigured.
+- Built the backend as Vercel Serverless Functions with a single Express
+  app exported for serverless execution.
+
+## 📄 Deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for production deployment
+instructions.
